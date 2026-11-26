@@ -1,0 +1,18 @@
+{
+  "case_id": "示例，非真实案例",
+  "status": "success",
+  "result": "[示例主结果，仅展示结构]",
+  "evidence_map": [
+    {
+      "claim": "[示例论断]",
+      "evidence": "[示例原文短引]",
+      "anchor": "p1:1"
+    }
+  ],
+  "verification": {
+    "fact_preservation": "示例：通过",
+    "anchor_validity": "示例：通过"
+  },
+  "uncertainties": [],
+  "change_log": []
+}
