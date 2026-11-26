@@ -1,0 +1,68 @@
+{
+  "case_id": "arXiv:2011.03269v1-nanopub-trial",
+  "status": "partial",
+  "result": {
+    "assertions": [
+      {
+        "subject": "color center",
+        "predicate": "has_state",
+        "object": "singlet ground state",
+        "evidence": "gives rise to a singlet ground state",
+        "anchor": "p1:2",
+        "confidence": "high"
+      },
+      {
+        "subject": "singlet state",
+        "predicate": "originates_from",
+        "object": "two electrons at adjacent oxygen vacancy sites",
+        "evidence": "originates from two electrons trapped at adjacent oxygen vacancy sites",
+        "anchor": "p2:2",
+        "confidence": "high"
+      },
+      {
+        "subject": "oxygen vacancies",
+        "predicate": "can_create",
+        "object": "defect states inside band gap",
+        "evidence": "can create defect states inside the band gap",
+        "anchor": "p2:3",
+        "confidence": "medium"
+      }
+    ],
+    "provenance": {
+      "source": "arXiv:2011.03269v1",
+      "author_claim": true,
+      "nav": "https://arxiv.org/abs/2011.03269"
+    }
+  },
+  "evidence_map": [
+    {
+      "claim": "色心具有单重态基态",
+      "evidence": "gives rise to a singlet ground state",
+      "anchor": "p1:2"
+    },
+    {
+      "claim": "单重态起源于相邻空位位双电子",
+      "evidence": "originates from two electrons trapped at adjacent oxygen vacancy sites",
+      "anchor": "p2:2"
+    }
+  ],
+  "verification": {
+    "fact_preservation": "通过：事实/数字/限定词/否定原样保留",
+    "anchor_validity": "通过：所有锚点指向输入中真实存在的段落",
+    "no_new_facts": "通过：未新增材料外信息"
+  },
+  "uncertainties": [
+    {
+      "item": "provenance 导航链接为推断",
+      "reason": "依据 arXiv ID 构造，未在线核验页面内容，正式使用需确认",
+      "location": "provenance.nav"
+    }
+  ],
+  "change_log": [
+    {
+      "issue": "初稿把 can_create 写成 creates",
+      "fix": "按原文限定恢复 can_create 并标 medium 置信度",
+      "location": "assertion 3"
+    }
+  ]
+}
