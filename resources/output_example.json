@@ -1,18 +1,104 @@
 {
-  "case_id": "示例，非真实案例",
-  "status": "success",
-  "result": "[示例主结果，仅展示结构]",
-  "evidence_map": [
+  "case_id": "[示例：从 case.json 原样回填，非真实案例]",
+  "status": "partial",
+  "main_result": {
+    "note": "[示例占位：按 output_contract 填写断言、证据与来源；本文件不含任何真实案例答案]"
+  },
+  "assertions": [
     {
-      "claim": "[示例论断]",
-      "evidence": "[示例原文短引]",
+      "id": "A-EXAMPLE-1",
+      "text": "[示例断言：单一可验证结论]",
+      "subject": "[示例主体]",
+      "predicate": "shows",
+      "object": "[示例客体]",
+      "qualifiers": {
+        "condition": "",
+        "scope": "",
+        "time": "",
+        "unit": "",
+        "negation": "",
+        "magnitude": ""
+      },
+      "confidence": "medium",
+      "confidence_basis": "[示例：直接证据 1 条]",
+      "evidence_ids": ["E-EXAMPLE-1"],
+      "provenance_id": "P-EXAMPLE-1",
       "anchor": "p1:1"
     }
   ],
+  "evidence": [
+    {
+      "id": "E-EXAMPLE-1",
+      "quote": "[示例原文短引，仅示意字段结构]",
+      "anchor": "p1:1",
+      "source_type": "material",
+      "relation": "direct",
+      "span_start": 0,
+      "span_end": 0
+    }
+  ],
+  "provenance": [
+    {
+      "id": "P-EXAMPLE-1",
+      "title": "unknown",
+      "authors": [],
+      "year": "unknown",
+      "version": "unknown",
+      "identifier": "unknown",
+      "source_path": "[示例材料路径]",
+      "anchor": "p1:1"
+    }
+  ],
+  "relation_vocabulary": {
+    "shows": "[示例判定条件]"
+  },
+  "quality_checks": [],
+  "dedup_record": [],
+  "evidence_map": [
+    {
+      "claim": "[示例论断]",
+      "value": "[示例取值]",
+      "evidence": "[示例原文短引]",
+      "anchor": "p1:1",
+      "source_type": "material",
+      "change_record": ""
+    }
+  ],
   "verification": {
-    "fact_preservation": "示例：通过",
-    "anchor_validity": "示例：通过"
+    "assertion_granularity": {
+      "result": "pass",
+      "evidence": "[示例：单一断言 0/0]"
+    },
+    "evidence_sufficiency": {
+      "result": "pass",
+      "evidence": "[示例：有充分证据 0/0 条]"
+    },
+    "anchor_spotcheck": {
+      "result": "pass",
+      "evidence": "[示例：回查 0/0 条成功]"
+    },
+    "relation_direction": {
+      "result": "pass",
+      "evidence": "[示例：方向正确 0/0 条]"
+    },
+    "provenance_completeness": {
+      "result": "pass",
+      "evidence": "[示例：元数据齐全 0/0 条]"
+    },
+    "dedup_clean": {
+      "result": "pass",
+      "evidence": "[示例：重复断言 0 条]"
+    },
+    "no_new_facts": {
+      "result": "pass",
+      "evidence": "[示例：材料外新增事实 0 条]"
+    },
+    "export_parseable": {
+      "result": "pass",
+      "evidence": "[示例：assertions.jsonld 可解析，字段 0/0 齐全]"
+    }
   },
   "uncertainties": [],
+  "sources": [],
   "change_log": []
 }
