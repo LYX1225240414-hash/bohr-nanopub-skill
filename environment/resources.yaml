@@ -1,0 +1,49 @@
+name: nanopub-assertion-builder
+version: 1.1.0
+entrypoint: ../SKILL.md
+bundle_root: ..
+description: >
+  Nanopublication 断言构建 Skill 的资源清单。执行内核为 resources/scripts/assert_lint.py，
+  负责断言粒度、证据对齐、来源元数据与导出结构的机械化检查。
+
+resources:
+  - path: resources/scripts/assert_lint.py
+    kind: executable
+    runtime: python3
+    entry: "python3 resources/scripts/assert_lint.py"
+    subcommands: [check, split, schema]
+    requires: []          # 纯标准库
+    inputs: ["/app/work/nanopubs.json（nanopublications 数组）", "待拆分的单句文本"]
+    outputs: ["/app/work/np_schema.json", "/app/work/assert_report.json",
+              "/app/work/assert_report.md", "stdout 拆分建议 JSON"]
+    outputs_note: >
+      assert_report.json 的 verification_hint 给出 assertion_granularity /
+      evidence_alignment / source_traceability / structural_validity 四项计数口径。
+
+  - path: resources/assertion_playbook.md
+    kind: doc
+    purpose: 断言粒度判据、受控关系词表、证据最小充分性、去重与质检规则
+
+  - path: resources/checklist.md
+    kind: doc
+    purpose: 带计数的自检清单（对应 verification 八项）
+
+  - path: resources/field_dict.md
+    kind: doc
+    purpose: 字段字典、锚点格式与计数口径
+
+  - path: resources/output_example.json
+    kind: sample
+    purpose: 输出结构示意（占位，非任何真实案例断言）
+
+  - path: examples/README.md
+    kind: doc
+    purpose: 最小调用示例与完整步骤
+
+runtime:
+  python: ">=3.9"
+  network: not_required
+  notes: >
+    脚本只能测结构、关键词与数字锚点，测不了语义蕴含与等价改写。
+    cross_lingual（中文断言 vs 英文证据且无共同数字/专名）只提示人工核对，
+    不直接判为失败，避免误伤合法的中英混排材料。
