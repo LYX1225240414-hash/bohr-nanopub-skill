@@ -65,6 +65,8 @@ description: "面向 Nanopublication 的科研断言拆分与证据绑定 Agent 
 ### 第 3 步：最小充分证据绑定
 为每条候选在原文中寻找**能单独支撑它的最短片段**，逐字写入 `evidence.quote` 并标 `anchor` 与 `span_start`/`span_end`。区分 `direct`（原文直接陈述）与 `indirect`（由两处或多处材料共同支持），间接证据列出全部证据 ID。找不到支撑片段的断言不写进正式结果，而是写入 uncertainties 并说明缺什么；不得用"显然""常识"替代证据。
 
+`check --np` 读取的 `evidence` 允许三种形态，脚本会先归一再生效：对象 `{"quote":…, "anchor":…}`、对象数组（取第一项有效记录）、纯字符串（视作 quote，`anchor` 另找 `locator`/`source`）。写成数组或字符串不会中断核验，但**只有 quote 才参与数值与用词比对**，所以正式产物仍按上表写成对象。
+
 ### 第 4 步：受控关系与方向校验
 按 `relation_vocabulary` 把断言映射为 `subject` / `predicate` / `object`，主体与客体不得互换；单位、条件、否定作为限定词保留。对每条三元组做方向复核：把 `subject + predicate` 读一遍，确认能自然回到 `object` 与原文语义。无法归入词表的关系写入 uncertainties 并说明边界，不强行套用。
 
@@ -90,6 +92,7 @@ cat /app/work/assert_report.md
 | `vague_unmarked` | 含"可能/部分/may/some"但 confidence 为空 | 补 confidence 并写入 uncertainties |
 | `missing_evidence` | 缺 quote 或 anchor | 补最小片段与位置；补不出改 `status: uncertain` |
 | `weak_alignment` | 证据与断言关键词重合 <0.30 | 换更贴切的片段，或修正断言主体 |
+| `number_unsupported` | **断言里的数值在证据片段中找不到**（如断言 200 mAh/g、原文 160 mAh/g） | 逐数核对：笔误就改，换源就补新证据；无法确认则该条 `status: uncertain` 并写入 uncertainties。这是断言型产物最致命的错误，不能因词面相似而放过 |
 | `cross_lingual` | 断言与证据语言不同且无共同数字/专名 | **人工核对**是否支撑；核对结论写进 uncertainties |
 | `not_minimal` | 证据远长于断言 | 裁到只保留支撑该断言的最小片段 |
 | `missing_metadata` | 缺 paper/year | 补齐；缺失项填 `unknown` 并进 uncertainties，不外部补造 |
