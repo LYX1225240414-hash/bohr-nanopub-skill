@@ -69,18 +69,48 @@ description: "面向 Nanopublication 的科研断言拆分与证据绑定 Agent 
 按 `relation_vocabulary` 把断言映射为 `subject` / `predicate` / `object`，主体与客体不得互换；单位、条件、否定作为限定词保留。对每条三元组做方向复核：把 `subject + predicate` 读一遍，确认能自然回到 `object` 与原文语义。无法归入词表的关系写入 uncertainties 并说明边界，不强行套用。
 
 ### 第 5 步：去重、合并与质量检查
-执行 `resources/assertion_playbook.md` 的去重规则：语义等价的合并并记录 `dedup_record`；范围不同或条件不同的保留为不同断言。逐条运行 `quality_checks`：断言过宽、证据不足、主体混淆、关系类型错误、来源缺失、证据与断言冲突。发现冲突时并列两种说法与各自锚点，交作者确认，不擅自择一。
+
+**先跑机械检查，再人工判读**（断言粒度、证据贴合度、元数据完整性都可以机械化）：
+
+```bash
+A=/skills/weekly-skill/resources/scripts/assert_lint.py
+python3 "$A" schema --out /app/work/np_schema.json
+python3 "$A" check  --np /app/work/nanopubs.json --out /app/work
+cat /app/work/assert_report.md
+```
+
+把工作版断言数组写到 `/app/work/nanopubs.json`（结构见 `resources/output_example.json`）后运行 `check`。按报告逐项修：
+
+| 报告项 | 含义 | 动作 |
+|---|---|---|
+| `compound` | 含"并且/同时/以及/as well as"等并列连接词 | 拆成多条单一命题，或把并列项显式写进 subject/object |
+| `too_long` | 断言过长（>120 字/45 词） | 拆分为多条 |
+| `causal_unmarked` | 含"因此/导致/therefore"但未标 inferred | 拆成 cause 与 effect 两条；effect 标 `strength: inferred` 直到有机制证据 |
+| `overbroad` | 含"所有/总是/never/all"且无 condition | 加 condition 限定，或改掉绝对化表述并降 confidence |
+| `vague_unmarked` | 含"可能/部分/may/some"但 confidence 为空 | 补 confidence 并写入 uncertainties |
+| `missing_evidence` | 缺 quote 或 anchor | 补最小片段与位置；补不出改 `status: uncertain` |
+| `weak_alignment` | 证据与断言关键词重合 <0.30 | 换更贴切的片段，或修正断言主体 |
+| `cross_lingual` | 断言与证据语言不同且无共同数字/专名 | **人工核对**是否支撑；核对结论写进 uncertainties |
+| `not_minimal` | 证据远长于断言 | 裁到只保留支撑该断言的最小片段 |
+| `missing_metadata` | 缺 paper/year | 补齐；缺失项填 `unknown` 并进 uncertainties，不外部补造 |
+
+`split` 子命令可对单个长句给出候选拆分点（辅助第 2 步）：
+```bash
+python3 "$A" split --text "<待拆长句>"
+```
+
+之后再做脚本做不到的人工判断：语义等价去重（`dedup_record`）、关系词表映射的合理性、证据是否真的支持该断言的**语义**（脚本只能测关键词与数字锚点，测不了语义蕴含）。
 
 ### 第 6 步：带计数的自检与回修
-逐项核对 `resources/checklist.md`，把**计数**写进 `verification`：
-- `assertion_granularity`：单一可验证断言数 / 断言总数，附抽查短句；
-- `evidence_sufficiency`：有最小充分证据的断言数 / 断言总数；
+逐项核对 `resources/checklist.md`，把**计数**写进 `verification`（优先采用 `assert_report.json` 的 `verification_hint`）：
+- `assertion_granularity`：单一可验证断言数 / 断言总数（取 `total - too_long - compound`）；
+- `evidence_sufficiency`：有最小充分证据的断言数 / 断言总数（取 `evidence_coverage`）；
 - `anchor_spotcheck`：按锚点回查成功数 / 抽查数，附短引片段；
 - `relation_direction`：方向正确的三元组数 / 检查数；
-- `provenance_completeness`：元数据齐全的断言数 / 断言总数，缺失项进 uncertainties；
-- `dedup_clean`：去重后重复断言数（必须为 0）；
+- `provenance_completeness`：元数据齐全的断言数 / 断言总数（`source_traceability`）；
+- `dedup_clean`：去重后重复断言数（`duplicate` 必须为 0）；
 - `no_new_facts`：材料外新增事实数（必须为 0）；
-- `export_parseable`：`assertions.jsonld` 能被 JSON 解析器读取且字段齐全（通过项 / 检查项）。
+- `export_parseable`：`assertions.jsonld` 能被 JSON 解析器读取且字段齐全（`structural_validity` 应为 1.0）。
 失败项回到第 2–5 步修正并记入 `change_log`；仍无法解决则保留 `partial`，不得写成通过。
 
 ### 第 7 步：交付与复核
@@ -100,12 +130,28 @@ description: "面向 Nanopublication 的科研断言拆分与证据绑定 Agent 
 
 ## 资源
 
+- `resources/scripts/assert_lint.py`：**执行内核**。`schema` 导出断言/证据/来源字段约定；`check` 检出复合断言、断言过宽、因果未标、缺证据、证据不贴合、非最小片段、元数据缺失、重复与结构问题；`split` 给出长句候选拆分点。纯标准库，无第三方依赖。
+- `environment/resources.yaml`：资源清单、依赖、运行时与产物说明。
 - `resources/assertion_playbook.md`：断言粒度判据、受控词表、证据最小充分性判据、去重与质检规则。
 - `resources/checklist.md`：带计数的自检清单。
 - `resources/field_dict.md`：字段字典、锚点格式与 verification 计数项。
 - `resources/output_example.json`：输出结构示意（占位示例，非答案）。
 - `examples/README.md`：最小调用示例（示意）。
 
-## 最小示例
+## 最小示例（示意，非真实案例结果）
 
-见 `examples/README.md`。示意输出仅展示字段结构，不代表任何真实科研案例的断言、证据或评测成绩。
+```bash
+A=/skills/weekly-skill/resources/scripts/assert_lint.py
+python3 "$A" schema --out /app/work/np_schema.json
+python3 "$A" check  --np /app/work/nanopubs.json --out /app/work
+python3 "$A" split  --text "该方法提高了导电性，同时降低了成本，因此具有工业前景"
+```
+
+示意输出（仅结构）：
+
+```json
+{"total": 18, "evidence_coverage": 1.0, "avg_alignment": 0.62,
+ "counts": {"compound": 0, "overbroad": 0, "missing_evidence": 0, "cross_lingual": 2}}
+```
+
+真正的断言必须来自本次实际运行，示意输出不得冒充正式案例答案或评测成绩。
