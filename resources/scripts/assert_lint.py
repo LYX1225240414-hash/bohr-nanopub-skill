@@ -52,6 +52,24 @@ import re
 import sys
 from pathlib import Path
 
+
+def _as_outfile(p, default_name):
+    """--out 兼容层：传目录则写入目录下 default_name，传文件名则直接写该文件。"""
+    path = Path(p)
+    if path.is_dir() or not path.suffix:
+        path = path / default_name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _as_outdir(p):
+    """--out 兼容层：传的是文件名时取其父目录，避免把文件路径当目录用而崩溃。"""
+    path = Path(p)
+    if path.suffix.lower() in (".json", ".md", ".txt", ".yaml", ".yml", ".csv", ".tex", ".bib"):
+        path = path.parent if str(path.parent) not in ("", ".") else Path(".")
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
 CONNECTIVES = ["并且", "同时", "以及", "而且", "此外", "另一方面", "并在此基础上",
                "as well as", "and also", "moreover", "furthermore", "in addition"]
 CAUSAL = ["因此", "所以", "导致", "从而", "因而", "由此", "because", "therefore",
@@ -113,6 +131,22 @@ def num_tokens(text):
     """跨语言可比的锚点：数字、单位、缩写、化学式、英文专名"""
     return {m.group(0).lower() for m in re.finditer(
         r"\d+(?:\.\d+)?\s*(?:%|°c|k|h|min|s|ma|mv|nm|µm|ml|mg|g|ev|wt)?|[A-Za-z][A-Za-z0-9\-]{2,}", str(text or ""))}
+
+
+def numbers_only(text):
+    """只取真实数值并归一（160.0→160、1e-3→0.001）。
+
+    num_tokens 是跨语言锚点集合，混有英文词与单位，不能拿来做"数值是否被证据支持"
+    的子集判断，否则会把 capacity/exhibits 这类词也算成缺失数值。
+    """
+    out = set()
+    for m in re.finditer(r"(?<![\w.\-])([+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?)",
+                         str(text or "")):
+        try:
+            out.add("%g" % float(m.group(1)))
+        except ValueError:
+            continue
+    return out
 
 
 def cjk_ratio(text):
@@ -192,7 +226,7 @@ def cmd_check(args):
     cat = {k: [] for k in ["too_long", "compound", "causal_unmarked", "overbroad",
                            "vague_unmarked", "missing_evidence", "weak_alignment",
                            "not_minimal", "missing_metadata", "duplicate", "id_issue",
-                           "cross_lingual"]}
+                           "cross_lingual", "number_unsupported"]}
     ids, texts = set(), {}
     aligns = []
 
@@ -237,16 +271,25 @@ def cmd_check(args):
                                           "action": "补 confidence（high/medium/low）并在 uncertainties 说明",
                                           "text": text[:140]})
 
-        # 证据
-        ev = np_.get("evidence") or {}
-        quote, anchor = str(ev.get("quote") or ""), str(ev.get("anchor") or "")
+        # 证据。evidence 可能是对象、对象数组或纯字符串，统一归一后再取字段，
+        # 否则遇到数组会直接抛 AttributeError 让整次核验失败。
+        ev = np_.get("evidence")
+        if isinstance(ev, list):
+            evs = [x for x in ev if isinstance(x, dict)]
+            ev = evs[0] if evs else {}
+        elif isinstance(ev, str):
+            ev = {"quote": ev}
+        elif not isinstance(ev, dict):
+            ev = {}
+        quote = str(ev.get("quote") or "")
+        anchor = str(ev.get("anchor") or ev.get("locator") or ev.get("source") or "")
         if not quote.strip() or not anchor.strip():
             cat["missing_evidence"].append({"id": nid,
                                             "missing": [k for k, v in (("quote", quote), ("anchor", anchor)) if not v.strip()],
                                             "action": "补最小证据片段与原文位置；补不出则改 status=uncertain"})
         else:
             ak, ek = kw_set(text), kw_set(quote)
-            nk, mk = num_tokens(text), num_tokens(quote)
+            nk, mk = numbers_only(text), numbers_only(quote)
             lex = len(ak & ek) / max(1, len(ak))
             anchor_hit = len(nk & mk) / max(1, len(nk)) if nk else 0.0
             cross = (cjk_ratio(text) > 0.30) and (cjk_ratio(quote) < 0.10)
@@ -271,6 +314,16 @@ def cmd_check(args):
                         "text": text[:120], "quote": quote[:120],
                         "action": "证据片段可能不支撑该断言：换更贴切的片段，或调整断言主体",
                     })
+            # 数值必须能在证据里找到：词面相似会掩盖数值矛盾（断言写 200 而原文是 160），
+            # 这是断言型产物最致命的错误，单独硬检查。
+            if nk and not nk <= mk:
+                cat["number_unsupported"].append({
+                    "id": nid, "assertion_numbers": sorted(nk)[:10],
+                    "evidence_numbers": sorted(mk)[:10],
+                    "missing_numbers": sorted(nk - mk)[:10],
+                    "text": text[:140], "quote": quote[:140],
+                    "action": "断言里的数值在证据片段中找不到：核对是否笔误/换源，或把该数改为 status=uncertain 并标需人工确认",
+                })
             if len(quote) > max(240, 3 * max(1, len(text))):
                 cat["not_minimal"].append({"id": nid, "assertion_chars": len(text),
                                            "evidence_chars": len(quote),
@@ -314,7 +367,7 @@ def cmd_check(args):
             "structural_validity": f"无结构问题 {max(0, ok_np)} / {total}",
         },
     }
-    out = Path(args.out)
+    out = _as_outdir(args.out)
     out.mkdir(parents=True, exist_ok=True)
     (out / "assert_report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     md = ["# 断言质量与证据对齐报告", "",
@@ -365,9 +418,9 @@ def cmd_split(args):
 
 
 def cmd_schema(args):
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    Path(args.out).write_text(json.dumps(SCHEMA, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps({"ok": True, "out": args.out}, ensure_ascii=False))
+    _p = _as_outfile(args.out, "np_schema.json")
+    _p.write_text(json.dumps(SCHEMA, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(json.dumps({"ok": True, "out": str(_p)}, ensure_ascii=False))
     return 0
 
 
