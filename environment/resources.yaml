@@ -1,5 +1,5 @@
 name: nanopub-assertion-builder
-version: 1.1.0
+version: 1.2.0
 entrypoint: ../SKILL.md
 bundle_root: ..
 description: >
@@ -47,3 +47,6 @@ runtime:
     脚本只能测结构、关键词与数字锚点，测不了语义蕴含与等价改写。
     cross_lingual（中文断言 vs 英文证据且无共同数字/专名）只提示人工核对，
     不直接判为失败，避免误伤合法的中英混排材料。
+
+changelog:
+  - "1.2.0: evidence 支持对象/数组/字符串三种形态（不再因数组崩溃），新增 number_unsupported 数值支撑硬检查；--out 兼容目录或文件名。"
